@@ -1,6 +1,8 @@
 /* global ga */
 
 import Ember from 'ember';
+import Route from '@ember/routing/route';
+import { inject as service } from '@ember/service';
 
 export function initialize (app) {
   // Create the one and only tracker need for the application.
@@ -26,18 +28,19 @@ export function initialize (app) {
   // We still go through the steps so we ensure the behavior is the same in all
   // environments and we do not run into any surprises.
 
-  Ember.Route.reopen ({
-    actions: {
-      didTransition () {
-        this._super (...arguments);
+  Route.reopen({
+    router: service('router'),
 
-        if (isProductionEnv) {
-          let {router} = this.getProperties (['routeName', 'router']);
-          let url = router.get ('url');
-
-          ga ('set', 'page', url);
-          ga ('send', 'pageview');
-        }
+    init() {
+      this._super(...arguments);
+      if (isProductionEnv) {
+        this.router.on('routeDidChange', (transition) => {
+          if (transition.intent.name && window.ga) {
+            window.ga(
+              'send', 'pageview', this.router.urlFor(transition.intent.name)
+            );
+          }
+        });
       }
     }
   });
